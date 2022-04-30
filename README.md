@@ -5,5 +5,5 @@
 # This program will work on any compiler (Windows or Linux, prefrebly 64 bit) which supports C++-17
 # The program itslef a self explanatory with proper doxygen style comments wherever necessary
 
-#It runs a consumer thread in a continous loop to check whether any line is read from the file and processes it as soon as it gets a hold on the data queue.
+# It runs a consumer thread in a continous loop to check whether any line is read from the file and processes it as soon as it gets a hold on the data queue.
 Once both the data queue is empty and the file reader thread is over it exits.
