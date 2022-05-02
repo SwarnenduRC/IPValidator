@@ -178,9 +178,9 @@ void IPValidator::startValidation(std::promise<bool> bFinished)
 {
     while (!m_bIsReadingDataDone.load())
         pool.submit([this] { processData(); });
-   
+
     while (!m_pIPDataQueue->empty())
-        processData();
+        pool.submit([this] { processData(); });
 
     pool.waitForTasks();
     m_bIsProcessingDataDone = true;
