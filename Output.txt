@@ -1,0 +1,6 @@
+
+Total IPV4 address count  	= 3
+Total IPV6 address count  	= 2
+Unique IPV4 address count 	= 1
+Unique IPV6 address count 	= 2
+Invalid IP address count  	= 4
