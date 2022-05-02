@@ -139,9 +139,9 @@ void IPValidator::processData()
         m_pIPDataQueue->pop();
         writeLock.unlock();
 
-        auto bIsValidIPV4 = pool.submit([](const string& ip) { return isValidIPV4Address(ip); }, ipAddr);
-        auto bIsValidIPV6 = pool.submit([](const string& ip) { return isValidIPV6Address(ip); }, ipAddr);
-        if (bIsValidIPV4.get())
+        auto bIsValidIPV4 = isValidIPV4Address(ipAddr);
+        auto bIsValidIPV6 = isValidIPV6Address(ipAddr);
+        if (bIsValidIPV4)
         {
             auto hashKey = getHashKey(ipAddr, false);
             auto bIsUnique = isUniqueIPV4Address(hashKey, true);
@@ -154,7 +154,7 @@ void IPValidator::processData()
             }
             ++m_totalIPV4AddrCnt;
         }
-        else if (bIsValidIPV6.get())
+        else if (bIsValidIPV6)
         {
             auto hashKey = getHashKey(ipAddr, true);
             auto bIsUnique = isUniqueIPV6Address(hashKey, true);
@@ -177,10 +177,11 @@ void IPValidator::processData()
 void IPValidator::startValidation(std::promise<bool> bFinished)
 {
     while (!m_bIsReadingDataDone.load())
-        processData();
+        pool.submit([this] { processData(); });
    
     while (!m_pIPDataQueue->empty())
         processData();
 
+    pool.waitForTasks();
     m_bIsProcessingDataDone = true;
 }
