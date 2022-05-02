@@ -1,4 +1,4 @@
-# NokiaIPValidator - A simple multi threaded program to read a text file of IP addresses and returns the counts of unique IPV4, IPV6 addresses along with total IPV4/IPV6 addresses present in the file. It also gives a count of invalid IP addresses present in the text file
+# IPValidator - A simple multi threaded program to read a text file of IP addresses and returns the counts of unique IPV4, IPV6 addresses along with total IPV4/IPV6 addresses present in the file. It also gives a count of invalid IP addresses present in the text file
 
 # At present in it's simplest form it will only validate any IP address which doesn't contain any space or special character between each segment. Although it can be easily enhaced.
 
