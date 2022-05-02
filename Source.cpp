@@ -36,6 +36,10 @@ void processFile(const std::string& fileName)
             cout << "Unique IPV6 address count \t= " << ipValidator.getUniqueIPV6AddrCnt() << endl;
             cout << "Invalid IP address count  \t= " << ipValidator.getInvalidIPAddrCnt() << endl;
         }
+        else
+        {
+            cerr << "Input file can not be opened. Exiting..." << endl;
+        }
     }
     catch (const exception& excp)
     {
