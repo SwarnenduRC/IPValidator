@@ -12,7 +12,7 @@
 #include <algorithm>            // std::algorithm
 #include <future>               // std::future, std::promise
 #include <memory>               // std::shared_ptr, std::unique_ptr
-#include <mutex>                // std::mutex, std::scoped_lock
+#include <shared_mutex>                // std::mutex, std::scoped_lock
 #include <thread>               // std::this_thread, std::thread
 
 using ui32 = std::uint_fast32_t;
@@ -62,7 +62,7 @@ public:
     /**
      * @brief Returns the unique IPV6 address count it has encountered so far
      */
-    size_t getUniqueIPV6AddrCnt() const noexcept { return m_pUniqueIPV6Addresses->size(); }
+    size_t getUniqueIPV6AddrCnt() const noexcept { return m_pUniqueIPV6Addresses->size(); };
 
     /**
      * @brief Returns the total IPV6 address count it has encountered so far
@@ -82,7 +82,7 @@ public:
     /**
      * @brief Returns the status of file processing
      */
-    bool isProcessingDone() const noexcept { return m_bIsProcessingDataDone.load(); }
+    bool isProcessingDone() const noexcept { return m_bIsProcessingDataDone; }
 
     /**
      * @brief Validates whether the IP address is a vaild IPV4 one or not
@@ -209,34 +209,24 @@ private:
     std::atomic<ui64> m_invalidIPAddrCnt = 0;
 
     /**
-     * @brief A write mutex for container modification operations related to IPV4 addresses
+     * @brief A mutex for container modification operations related to IPV4 addresses
      */
-    std::mutex m_writeMtxIPV4 = {};
+    mutable std::shared_mutex m_MtxIPV4 = {};
 
     /**
-     * @brief A write mutex for container modification operations related to IPV6 addresses
+     * @brief A mutex for container modification operations related to IPV6 addresses
      */
-    std::mutex m_writeMtxIPV6 = {};
+    mutable std::shared_mutex m_MtxIPV6 = {};
 
     /**
-     * @brief A read mutex for container read operations related to IPV4 addresses
+     * @brief A mutex for container modification operations related to IP addresses
      */
-    std::shared_mutex m_readMtxIP = {};
-
-    /**
-     * @brief A write mutex for container modification operations related to IP addresses
-     */
-    std::mutex m_dataQueueMtx = {};
+    mutable std::shared_mutex m_dataQueueMtx = {};
 
     /**
      * @brief A future to hold the consumer thread running status
      */
     std::future<bool> m_bConsumerThreadRunningStatus = {};
-
-    /**
-     * @brief A condition variable for the synchronization purpose between various writer threads
-     */
-    std::condition_variable m_condVar = {};
 
     /**
      * @brief A thread object holding the details of the invoked consumer thread

@@ -12,7 +12,7 @@ const regex IPValidator::m_ipv4Validator("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][
 const regex IPValidator::m_ipv6Validator("((([0-9a-fA-F]){1,4})\\:){7}([0-9a-fA-F]){1,4}");
 
 //A common threadpool object
-ThreadPool pool;
+ThreadPool pool(10);
 
 IPValidator::IPValidator()
     : m_pIPDataQueue(new Queue())
@@ -98,7 +98,7 @@ bool IPValidator::isUniqueIPV4Address(const ui32& hashKey, const bool bIPV4) noe
     if (!bIPV4 || hashKey == 0)
         return false;
 
-    scoped_lock<shared_mutex> readLock(m_readMtxIP);
+    shared_lock readLock(m_MtxIPV4);
     if (m_pUniqueIPV4Addresses->find(hashKey) == m_pUniqueIPV4Addresses->end())
         return true;
 
@@ -110,7 +110,7 @@ bool IPValidator::isUniqueIPV6Address(const ui32& hashKey, const bool bIPV6) noe
     if (!bIPV6 || hashKey == 0)
         return false;
 
-    scoped_lock<shared_mutex> readLock(m_readMtxIP);
+    scoped_lock readLock(m_MtxIPV6);
     if (m_pUniqueIPV6Addresses->find(hashKey) == m_pUniqueIPV6Addresses->end())
         return true;
 
@@ -122,11 +122,11 @@ void IPValidator::pushData(const std::string& ip)
     if (ip.empty())
         return;
     {
-        scoped_lock<shared_mutex> readLock(m_readMtxIP);
+        shared_lock readLock(m_dataQueueMtx);
         while (m_pIPDataQueue->size() == m_dataQueueMaxSize)
             continue;
     }
-    scoped_lock<mutex> writeLock(m_dataQueueMtx);
+    unique_lock writeLock(m_dataQueueMtx);
     m_pIPDataQueue->emplace(ip);
 }
 
@@ -146,7 +146,7 @@ void IPValidator::processData()
             auto hashKey = getHashKey(ipAddr, false);
             auto bIsUnique = isUniqueIPV4Address(hashKey, true);
             {
-                scoped_lock<mutex> writeLock(m_writeMtxIPV4);
+                unique_lock writeLock(m_MtxIPV4);
                 if (bIsUnique)
                     m_pUniqueIPV4Addresses->emplace(hashKey);
                 else
@@ -159,7 +159,7 @@ void IPValidator::processData()
             auto hashKey = getHashKey(ipAddr, true);
             auto bIsUnique = isUniqueIPV6Address(hashKey, true);
             {
-                scoped_lock<mutex> writeLock(m_writeMtxIPV6);
+                unique_lock writeLock(m_MtxIPV6);
                 if (bIsUnique)
                     m_pUniqueIPV6Addresses->emplace(hashKey);
                 else
