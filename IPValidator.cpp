@@ -1,4 +1,5 @@
 #include "IPValidator.h"
+#include "ThreadPool.h"
 
 #include <sstream>
 #include <exception>
@@ -9,6 +10,9 @@ using namespace std;
 const ui32 IPValidator::m_dataQueueMaxSize = 65'000;
 const regex IPValidator::m_ipv4Validator("(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])");
 const regex IPValidator::m_ipv6Validator("((([0-9a-fA-F]){1,4})\\:){7}([0-9a-fA-F]){1,4}");
+
+//A common threadpool object
+ThreadPool pool;
 
 IPValidator::IPValidator()
     : m_pIPDataQueue(new Queue())
@@ -22,6 +26,7 @@ IPValidator::IPValidator()
 
 IPValidator::~IPValidator()
 {
+    pool.waitForTasks();
     auto status = m_bConsumerThreadRunningStatus.wait_for(0ms);
     while (status != future_status::ready)
     {
@@ -61,14 +66,14 @@ IPValidator::~IPValidator()
 
     try
     {
-        while (endPos != string::npos && (bIsIPV6 ? (segmentIdx <= 0x7) : (segmentIdx <=3)))
+        while (endPos != string::npos && (bIsIPV6 ? (segmentIdx <= 0x7) : (segmentIdx <= 3)))
         {
             auto segment = localIp.substr(0, localIp.find_first_of(separator) - 1);
             localIp = localIp.substr(endPos + 1);
             endPos = localIp.find_first_of(separator);
             istringstream is(segment);
             ui32 val = 0;
-            
+
             if (bIsIPV6)
                 is >> hex >> val;
             else
@@ -96,7 +101,7 @@ bool IPValidator::isUniqueIPV4Address(const ui32& hashKey, const bool bIPV4) noe
     scoped_lock<shared_mutex> readLock(m_readMtxIP);
     if (m_pUniqueIPV4Addresses->find(hashKey) == m_pUniqueIPV4Addresses->end())
         return true;
-    
+
     return false;
 }
 
@@ -127,17 +132,16 @@ void IPValidator::pushData(const std::string& ip)
 
 void IPValidator::processData()
 {
+    unique_lock writeLock(m_dataQueueMtx);
     if (!m_pIPDataQueue->empty())
     {
         auto ipAddr = m_pIPDataQueue->front();
-        {
-            scoped_lock<mutex> writeLock(m_dataQueueMtx);
-            m_pIPDataQueue->pop();
-        }
-        auto bIsValidIPV4 = isValidIPV4Address(ipAddr);
-        auto bIsValidIPV6 = isValidIPV6Address(ipAddr);
+        m_pIPDataQueue->pop();
+        writeLock.unlock();
 
-        if (bIsValidIPV4)
+        auto bIsValidIPV4 = pool.submit([](const string& ip) { return isValidIPV4Address(ip); }, ipAddr);
+        auto bIsValidIPV6 = pool.submit([](const string& ip) { return isValidIPV6Address(ip); }, ipAddr);
+        if (bIsValidIPV4.get())
         {
             auto hashKey = getHashKey(ipAddr, false);
             auto bIsUnique = isUniqueIPV4Address(hashKey, true);
@@ -150,7 +154,7 @@ void IPValidator::processData()
             }
             ++m_totalIPV4AddrCnt;
         }
-        else if (bIsValidIPV6)
+        else if (bIsValidIPV6.get())
         {
             auto hashKey = getHashKey(ipAddr, true);
             auto bIsUnique = isUniqueIPV6Address(hashKey, true);
@@ -171,12 +175,10 @@ void IPValidator::processData()
 }
 
 void IPValidator::startValidation(std::promise<bool> bFinished)
-{    
-    while (!m_bIsReadingDataDone)
-    {
-        while (!m_pIPDataQueue->empty())
-            processData();
-    }
+{
+    while (!m_bIsReadingDataDone.load())
+        processData();
+   
     while (!m_pIPDataQueue->empty())
         processData();
 

@@ -36,7 +36,7 @@ class IPValidator
 public:
     /**
      * @brief Construct a new IP validator with default values.
-     * 
+     *
      */
     IPValidator();
 
@@ -82,13 +82,13 @@ public:
     /**
      * @brief Returns the status of file processing
      */
-    bool isProcessingDone() const noexcept { return m_bIsProcessingDataDone; }
+    bool isProcessingDone() const noexcept { return m_bIsProcessingDataDone.load(); }
 
     /**
      * @brief Validates whether the IP address is a vaild IPV4 one or not
      *
      * @param ip The IP address to be validated
-     * 
+     *
      * @return True on success false on failure
      */
     static bool isValidIPV4Address(const std::string& ip) noexcept;
@@ -107,7 +107,7 @@ public:
      * - a push request is made into the data queue
      *
      * @param ip The IP address to be validated
-     * 
+     *
      */
     void pushData(const std::string& ip);
 
@@ -117,7 +117,7 @@ public:
      *
      * @param hashKey The equivalent hask key for the IPV4 address
      * @param bIPV4 The type of the address. For a validation it has to be true
-     * 
+     *
      * @return True on success
      *
      */
@@ -146,10 +146,10 @@ public:
 private:
     /**
      * @brief Construct a hash key from the passed IP in uint_fast32_t format
-     * 
+     *
      * @param ip The IP address for which the hash key would be generated
      * @param bIsIPV6 Whether the IP is of IPV6 or IPV4 type. If false, then IPV4 assumed
-     * 
+     *
      * @return A constructed hash key in uint_fast32_t type
      */
     static ui32 getHashKey(const std::string& ip, const bool bIsIPV6);
@@ -158,7 +158,7 @@ private:
      * @brief Starts the validation of the read IP addresses in a continous running thread using thread pool. Basically it is the consumer thread which will process the data.
      * - It reads from the data queue for any incoming IP address, pops it up for processing and again checks. Continue this till it comes to know that the data queue is empty
      * - and the reading of data is also over. It also updates the unique IPV4/IPV6/invalid address counts in the process.
-     * 
+     *
      * @Param bFinished True on clean exit otherwise false
      */
     void startValidation(std::promise<bool> bFinished);
@@ -196,17 +196,17 @@ private:
     /**
      * @brief An atomic uint_fast64_t type to hold the count of total valid IPV4 addresses read
      */
-    std::atomic<ui64> m_totalIPV4AddrCnt    = 0;
+    std::atomic<ui64> m_totalIPV4AddrCnt = 0;
 
     /**
      * @brief An atomic uint_fast64_t type to hold the count of total valid IPV6 addresses read
      */
-    std::atomic<ui64> m_totalIPV6AddrCnt    = 0;
+    std::atomic<ui64> m_totalIPV6AddrCnt = 0;
 
     /**
      * @brief An atomic uint_fast64_t type to hold the count of total invalid IP addresses read
      */
-    std::atomic<ui64> m_invalidIPAddrCnt    = 0;
+    std::atomic<ui64> m_invalidIPAddrCnt = 0;
 
     /**
      * @brief A write mutex for container modification operations related to IPV4 addresses
@@ -263,5 +263,3 @@ private:
 // ============================================================================================= //
 
 #endif // !IP_VALIDATOR
-
-
