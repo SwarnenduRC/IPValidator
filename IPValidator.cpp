@@ -30,8 +30,8 @@ IPValidator::~IPValidator()
     auto status = m_bConsumerThreadRunningStatus.wait_for(0ms);
     while (status != future_status::ready)
     {
-        continue;
         this_thread::sleep_for(1ms);
+        continue;
     }
     if (m_consumerThread.joinable())
         m_consumerThread.join();
